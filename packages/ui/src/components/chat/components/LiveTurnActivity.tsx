@@ -14,7 +14,7 @@ import { getLiveFinalMessage, getShownPages } from '../lib/turns/liveActivity';
 import { summarizeLiveActivity } from '../lib/turns/liveActivitySummary';
 import { LiveActivityCollapse } from './LiveActivityCollapse';
 import { LiveFinalActivityContext, LiveTurnHoistedPagesContext } from './liveActivityContext';
-import { ShownToolCard } from '../message/parts/ShownToolCard';
+import { ShownPartCard } from '../message/parts/ShownToolCard';
 import { TurnMessageWindow } from './TurnMessageWindow';
 import { useActivityRowGlide } from './useActivityRowGlide';
 import { TurnMessageWindowContext, openedFoldMessageWindow } from '../lib/turns/turnMessageWindow';
@@ -73,7 +73,7 @@ export function LiveTurnActivity({ turn, hasLaterAssistant, expanded, onToggle, 
     // above the answer once one arrives, and stays there in a turn that ended
     // without one. The fold no longer holds it, so it moves at most from the
     // bottom of the fold to the top of the answer.
-    const pages = React.useMemo(() => getShownPages(turn.assistantMessages), [turn.assistantMessages]);
+    const pages = React.useMemo(() => getShownPages(turn.assistantMessages, finalMessage), [turn.assistantMessages, finalMessage]);
     // While the turn works, what the agent does after its last page (more
     // steps, the reply it is still writing) is drawn below the page, in the
     // order it happened; drawn inside the fold, it sat above the page until
@@ -166,7 +166,7 @@ export function LiveTurnActivity({ turn, hasLaterAssistant, expanded, onToggle, 
                 </LiveActivityCollapse>
                 {!finalMessage && pages.length > 0 ? (
                     <div className="chat-message-column">
-                        {pages.map((part) => <ShownToolCard key={part.id} part={part} />)}
+                        {pages.map((part) => <ShownPartCard key={part.id} part={part} />)}
                     </div>
                 ) : null}
                 {messagesBelowPages.length > 0 ? (
