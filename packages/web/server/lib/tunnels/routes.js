@@ -1,4 +1,5 @@
 import { isEnterpriseMode } from '../enterprise-mode.js';
+import { normalizeBasePath, withDeploymentBaseUrl } from '../opencode/deployment-path.js';
 
 // Cloudflare and ngrok terminate TLS at their edge and see every request in
 // plain text; Tailscale opens this machine to other devices. Enterprise mode
@@ -402,7 +403,7 @@ export const createTunnelRoutesRuntime = (dependencies) => {
 
         return res.json({
           active: true,
-          url: publicUrl,
+          url: withDeploymentBaseUrl(normalizeBasePath(process.env.OPENCHAMBER_BASE_PATH), publicUrl),
           mode: activeNormalizedMode,
           provider,
           providerMetadata,
@@ -554,13 +555,14 @@ export const createTunnelRoutesRuntime = (dependencies) => {
         });
 
         const bootstrapToken = tunnelAuthController.issueBootstrapToken({ ttlMs: bootstrapTtlMs });
-        const connectUrl = `${publicUrl.replace(/\/$/, '')}/connect?t=${encodeURIComponent(bootstrapToken.token)}`;
+        const deploymentUrl = withDeploymentBaseUrl(normalizeBasePath(process.env.OPENCHAMBER_BASE_PATH), publicUrl);
+        const connectUrl = `${deploymentUrl.replace(/\/$/, '')}/connect?t=${encodeURIComponent(bootstrapToken.token)}`;
         const managedRemoteTunnelConfig = await readManagedRemoteTunnelConfigFromDisk();
         const isCloudflareProvider = activeProvider === TUNNEL_PROVIDER_CLOUDFLARE;
 
         return res.json({
           ok: true,
-          url: publicUrl,
+          url: deploymentUrl,
           mode,
           provider: activeProvider,
           providerMetadata,

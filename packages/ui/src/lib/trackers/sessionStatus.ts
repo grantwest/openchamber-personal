@@ -1,6 +1,7 @@
 import { isElectronShell } from '@/lib/desktop';
 import { getLocalDesktopOrigin } from '@/lib/desktopCurrentHost';
 import { getRuntimeKey } from '@/lib/runtime-switch';
+import { getDeploymentApiBaseUrl } from '@/lib/deployment-path';
 import { readTrackerDescriptor, whenTrackerListHeld } from './registry';
 import type { TrackerAPI } from './types';
 
@@ -29,7 +30,7 @@ export function resolveTrackerSessionOrigin(): string | undefined {
     }
     return undefined;
   }
-  const origin = window.location.origin.trim();
+  const origin = getDeploymentApiBaseUrl() || window.location.origin.trim();
   return origin || undefined;
 }
 

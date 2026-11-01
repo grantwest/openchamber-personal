@@ -1,3 +1,5 @@
+import { normalizeBasePath, withDeploymentBaseUrl } from './deployment-path.js';
+
 /** One stray uncaught exception is survivable; a storm means the process is broken. */
 const UNCAUGHT_STORM_LIMIT = 10;
 const UNCAUGHT_STORM_WINDOW_MS = 60_000;
@@ -71,7 +73,8 @@ export const createServerStartupRuntime = (dependencies) => {
             : (bindHost.includes(':') ? `[${bindHost}]` : bindHost);
           console.log(`OpenChamber server listening on ${bindHost}:${activePort}`);
           console.log(`Health check: http://${displayHost}:${activePort}/health`);
-          console.log(`Web interface: http://${displayHost}:${activePort}`);
+          const basePath = normalizeBasePath(process.env.OPENCHAMBER_BASE_PATH);
+          console.log(`Web interface: http://${displayHost}:${activePort}${basePath}`);
 
           if (startupTunnelRequest) {
             const startupModeLabel = startupTunnelRequest.mode === TUNNEL_MODE_QUICK
@@ -102,9 +105,10 @@ export const createServerStartupRuntime = (dependencies) => {
                   ? null
                   : normalizeTunnelBootstrapTtlMs(settings?.tunnelBootstrapTtlMs);
                 const bootstrapToken = tunnelAuthController.issueBootstrapToken({ ttlMs: bootstrapTtlMs });
-                const connectUrl = `${publicUrl.replace(/\/$/, '')}/connect?t=${encodeURIComponent(bootstrapToken.token)}`;
+                const deploymentUrl = withDeploymentBaseUrl(basePath, publicUrl);
+                const connectUrl = `${deploymentUrl.replace(/\/$/, '')}/connect?t=${encodeURIComponent(bootstrapToken.token)}`;
                 if (onTunnelReady) {
-                  onTunnelReady(publicUrl, connectUrl);
+                  onTunnelReady(deploymentUrl, connectUrl);
                 } else {
                   console.log(`\n🌐 Tunnel URL: ${connectUrl}`);
                   console.log('🔑 One-time connect link (expires after first use)\n');

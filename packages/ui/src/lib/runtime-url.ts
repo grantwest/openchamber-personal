@@ -1,4 +1,5 @@
 import { getLocalRuntimeUrlAuthTokenSync, getRuntimeExtraHeadersSync, getRuntimeUrlAuthTokenSync } from '@/lib/runtime-auth';
+import { getDeploymentApiBaseUrl } from './deployment-path';
 
 type QueryValue = string | number | boolean | null | undefined;
 
@@ -38,7 +39,7 @@ const normalizeBaseUrl = (value: string | null | undefined): string => {
 const readInjectedApiBaseUrl = (): string => {
   if (typeof window === 'undefined') return '';
   const injected = (window as typeof window & { __OPENCHAMBER_API_BASE_URL__?: string }).__OPENCHAMBER_API_BASE_URL__;
-  return normalizeBaseUrl(injected);
+  return normalizeBaseUrl(injected) || getDeploymentApiBaseUrl();
 };
 
 const readInjectedLocalOrigin = (): string => {

@@ -79,6 +79,7 @@ import { createServerUtilsRuntime } from './lib/opencode/server-utils-runtime.js
 import { createOpenCodeTrust } from './lib/opencode-trust/index.js';
 import { guardOpenCodeFetch } from './lib/opencode-trust/fetch-guard.js';
 import { createStaticRoutesRuntime } from './lib/opencode/static-routes-runtime.js';
+import { createDeploymentPathRuntime, normalizeBasePath, withDeploymentBaseUrl } from './lib/opencode/deployment-path.js';
 import { createSettingsRuntime } from './lib/opencode/settings-runtime.js';
 import { createOpenCodeResolutionRuntime } from './lib/opencode/opencode-resolution-runtime.js';
 import { runOpenCodeCliUpgrade } from './lib/opencode/cli-upgrade.js';
@@ -1010,6 +1011,7 @@ const notificationTriggerRuntime = createNotificationTriggerRuntime({
   buildOpenCodeUrl,
   getOpenCodeAuthHeaders,
   readSessionMetadata: readStoredSessionMetadata,
+  getDeploymentBasePath: () => normalizeBasePath(process.env.OPENCHAMBER_BASE_PATH),
   // Read at call time: the isolated-spaces switch turns the host on and off live.
   spaceFetchFor: (spaceId) => spacesHost?.openCodeFetchFor(spaceId) ?? null,
   // Declared further down; only ever called after startup.
@@ -2222,6 +2224,7 @@ const gracefulShutdownRuntime = createGracefulShutdownRuntime({
 const gracefulShutdown = (...args) => gracefulShutdownRuntime.gracefulShutdown(...args);
 
 async function main(options = {}) {
+  const deploymentPathRuntime = createDeploymentPathRuntime(process.env.OPENCHAMBER_BASE_PATH);
   beginGuestServiceHost({ registryDir: guestServiceRegistryDir(OPENCHAMBER_DATA_DIR) });
   // Again at start: the desktop shell merges the login shell's environment,
   // where proxy variables often live, after this module first loaded.
@@ -2472,6 +2475,7 @@ async function main(options = {}) {
   }
 
   const app = express();
+  app.use(deploymentPathRuntime.middleware);
   const serverStartedAt = new Date().toISOString();
   const packagedClientOrigins = new Set([
     'openchamber-ui://app',
@@ -2599,7 +2603,7 @@ async function main(options = {}) {
       if (Number.isFinite(activePort) && activePort > 0) return activePort;
       return Number.isFinite(port) && port > 0 ? port : null;
     },
-    getTunnelUrl: () => tunnelRuntimeContextHolder?.tunnelService?.getPublicUrl?.() ?? null,
+    getTunnelUrl: () => withDeploymentBaseUrl(normalizeBasePath(process.env.OPENCHAMBER_BASE_PATH), tunnelRuntimeContextHolder?.tunnelService?.getPublicUrl?.() ?? null),
     verboseRequestLogs: OPENCHAMBER_VERBOSE_REQUEST_LOGS,
     uiPassword,
     tunnelAuthController,
@@ -2893,6 +2897,7 @@ async function main(options = {}) {
   });
 
   const startupPipelineResult = await startupPipelineRuntime.run({
+    deploymentPathRuntime,
     app,
     server,
     express,
@@ -2995,7 +3000,7 @@ async function main(options = {}) {
     httpServer: server,
     getPort: () => tunnelRuntimeContext.getActivePort(),
     getOpenCodePort: () => openCodePort,
-    getTunnelUrl: () => tunnelService.getPublicUrl(),
+    getTunnelUrl: () => withDeploymentBaseUrl(normalizeBasePath(process.env.OPENCHAMBER_BASE_PATH), tunnelService.getPublicUrl()),
     getQuitRiskStatus: () => ({
       tunnel: {
         active: Boolean(tunnelService.getPublicUrl()),

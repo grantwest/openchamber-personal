@@ -29,6 +29,31 @@ describe('createRuntimeUrlResolver', () => {
     expect(urls.rawFile('/tmp/a b.txt')).toBe('/api/fs/raw?path=%2Ftmp%2Fa+b.txt');
   });
 
+  test('uses the hosted deployment prefix for HTTP, assets, SSE, and WebSockets', () => {
+    withWindow({
+      location: { origin: 'https://lab.example', href: 'https://lab.example/openchamber/' },
+      __OPENCHAMBER_BASE_PATH__: '/openchamber',
+    }, () => {
+      const urls = createRuntimeUrlResolver();
+      expect(urls.api('/api/config/settings')).toBe('https://lab.example/openchamber/api/config/settings');
+      expect(urls.auth('/auth/session')).toBe('https://lab.example/openchamber/auth/session');
+      expect(urls.health()).toBe('https://lab.example/openchamber/health');
+      expect(urls.authenticatedAsset('/api/fs/raw')).toBe('https://lab.example/openchamber/api/fs/raw');
+      expect(urls.sse('/api/global/event')).toBe('https://lab.example/openchamber/api/global/event');
+      expect(urls.websocket('/api/terminal/ws')).toBe('wss://lab.example/openchamber/api/terminal/ws');
+    });
+  });
+
+  test('keeps an explicit remote runtime separate from the hosted deployment', () => {
+    withWindow({
+      location: { origin: 'https://lab.example', href: 'https://lab.example/openchamber/' },
+      __OPENCHAMBER_BASE_PATH__: '/openchamber',
+    }, () => {
+      const urls = createRuntimeUrlResolver({ apiBaseUrl: 'https://remote.example/other' });
+      expect(urls.api('/api/info')).toBe('https://remote.example/other/api/info');
+    });
+  });
+
   test('builds absolute API URLs when an API base URL is configured', () => {
     const urls = createRuntimeUrlResolver({ apiBaseUrl: 'https://server.example/base/' });
 

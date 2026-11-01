@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { getClientPlatform } from '@/lib/platform';
+import { deploymentUrl } from '@/lib/deployment-path';
 import { useI18n } from '@/lib/i18n';
 import {
   SettingsSection,
@@ -238,18 +239,18 @@ export const NotificationSettings: React.FC = () => {
 
     const attempts: Array<{ label: string; opts: RegistrationOptions | null }> = [
       { label: 'no-options', opts: null },
-      { label: 'scope-root', opts: { scope: '/' } },
+      { label: 'scope-root', opts: { scope: deploymentUrl('/') } },
       { label: 'type-classic', opts: { type: 'classic' } },
-      { label: 'type-classic-scope', opts: { type: 'classic', scope: '/' } },
-      { label: 'updateViaCache-none', opts: { type: 'classic', updateViaCache: 'none', scope: '/' } },
+      { label: 'type-classic-scope', opts: { type: 'classic', scope: deploymentUrl('/') } },
+      { label: 'updateViaCache-none', opts: { type: 'classic', updateViaCache: 'none', scope: deploymentUrl('/') } },
     ];
 
     let lastError: unknown = null;
     for (const attempt of attempts) {
       try {
         const promise = attempt.opts
-          ? navigator.serviceWorker.register('/sw.js', attempt.opts)
-          : navigator.serviceWorker.register('/sw.js');
+          ? navigator.serviceWorker.register(deploymentUrl('/sw.js'), attempt.opts)
+          : navigator.serviceWorker.register(deploymentUrl('/sw.js'));
 
         return await withTimeout(promise, 10000, `Service worker registration timed out (${attempt.label})`);
       } catch (error) {

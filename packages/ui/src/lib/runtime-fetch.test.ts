@@ -81,6 +81,39 @@ describe('runtimeFetch transport contract', () => {
     }
   });
 
+  test('keeps SDK mutations under the hosted prefix without doubling it', async () => {
+    const previous = getRuntimeUrlResolver();
+    const originalWindow = globalThis.window;
+    const calls: Array<{ url: string; method: string; body: string }> = [];
+    try {
+      Object.defineProperty(globalThis, 'window', {
+        configurable: true,
+        value: {
+          location: { origin: 'https://lab.example', href: 'https://lab.example/openchamber/' },
+          __OPENCHAMBER_BASE_PATH__: '/openchamber',
+        },
+      });
+      configureRuntimeUrlResolver({});
+      // SAFETY: The SDK and runtimeFetch use only the fetch call signature implemented by this fixture.
+      globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+        const request = input instanceof Request ? input : new Request(input, init);
+        calls.push({ url: request.url, method: request.method, body: await request.clone().text() });
+        return new Response(null, { status: 204 });
+      }) as typeof fetch;
+      const client = createRuntimeOpencodeClient({ baseUrl: 'https://lab.example/openchamber/api', directory: '/repo' });
+      await client.session.update({ sessionID: 'ses_1', title: 'Prefixed' });
+      await runtimeFetch('/auth/session', { method: 'POST', body: JSON.stringify({ password: 'test-only' }) });
+      expect(calls).toEqual([
+        { url: 'https://lab.example/openchamber/api/session/ses_1', method: 'PATCH', body: JSON.stringify({ title: 'Prefixed' }) },
+        { url: 'https://lab.example/openchamber/auth/session', method: 'POST', body: JSON.stringify({ password: 'test-only' }) },
+      ]);
+    } finally {
+      setRuntimeUrlResolver(previous);
+      Object.defineProperty(globalThis, 'window', { configurable: true, value: originalWindow });
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   test('preserves bodies from actual SDK mutation requests on same-origin runtimes', async () => {
     const previous = getRuntimeUrlResolver();
     const originalWindow = globalThis.window;
@@ -188,7 +221,11 @@ describe('runtimeFetch transport contract', () => {
       const captured = calls[0].input;
       expect(captured.url).toBe('https://runtime.example/base/api/session/abc/prompt_async?directory=%2Frepo&workspace=main');
       expect(captured.method).toBe('POST');
-      expect(captured.signal).toBe(controller.signal);
+      // Request may clone its signal; cancellation, not object identity, is the contract.
+      expect(captured.signal.aborted).toBe(false);
+      controller.abort('transport-test');
+      expect(captured.signal.aborted).toBe(true);
+      expect(captured.signal.reason).toBe('transport-test');
       expect(captured.headers.get('content-type')).toBe('application/json');
       expect(captured.headers.get('x-sdk-header')).toBe('kept');
       expect(captured.headers.get('x-init-header')).toBe('merged');

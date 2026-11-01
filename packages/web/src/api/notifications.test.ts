@@ -41,6 +41,7 @@ const installNotificationMock = (
 };
 
 const installWindowMock = (overrides?: {
+  basePath?: string;
   pathname?: string;
   search?: string;
   focus?: () => void;
@@ -52,6 +53,7 @@ const installWindowMock = (overrides?: {
   Object.defineProperty(globalThis, 'window', {
     configurable: true,
     value: {
+      __OPENCHAMBER_BASE_PATH__: overrides?.basePath ?? '',
       localStorage: {
         getItem: (key: string) => storage.get(key) ?? null,
         setItem: (key: string, value: string) => storage.set(key, value),
@@ -227,6 +229,22 @@ describe('web notifications API', () => {
     expect(focus).toHaveBeenCalled();
     expect(assign).toHaveBeenCalledWith('/?session=ses_123');
     expect(instance?.close).toHaveBeenCalled();
+  });
+
+  it('keeps foreground notification clicks in the hosted deployment', async () => {
+    const assign = vi.fn();
+    installWindowMock({ basePath: '/openchamber', pathname: '/openchamber/', assign });
+    installFocusedDocument();
+    installEmptyNavigator();
+    const captured: CapturedNotification[] = [];
+    installNotificationMock(() => undefined, captured);
+
+    const { createWebNotificationsAPI } = await import('./notifications');
+    await createWebNotificationsAPI().notifyAgentCompletion({ sessionId: 'ses_123', tag: 'subpath' });
+
+    const instance = captured[0]?.instance;
+    instance?.onclick?.call(instance, new Event('click'));
+    expect(assign).toHaveBeenCalledWith('/openchamber/?session=ses_123');
   });
 
   it('only focuses when the notified session is already open', async () => {

@@ -149,7 +149,7 @@ const requestOrigin = (req) => {
   if (!host) {
     return null;
   }
-  return `${proto}://${host}`;
+  return `${proto}://${host}${req.openchamberBasePath || ''}`;
 };
 
 const escapeHtml = (value) => String(value)
@@ -924,7 +924,7 @@ export const registerGuestRoutes = (app, {
   // its connections are named by the host the browser used.
   const connectSourceFor = (req, packagePath) => {
     const hostHeader = guestHostSchema.safeParse(req.headers.host);
-    return hostHeader.success ? `${hostHeader.data}${packagePath}` : null;
+    return hostHeader.success ? `${hostHeader.data}${req.openchamberBasePath || ''}${packagePath}` : null;
   };
 
   // A frame's own credential for `/api/guest-files/` (`frame-grants.js`).

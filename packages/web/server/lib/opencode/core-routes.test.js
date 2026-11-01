@@ -3,6 +3,7 @@ import express from 'express';
 import request from 'supertest';
 import { createTunnelAuth } from './tunnel-auth.js';
 import { registerAuthAndAccessRoutes, registerCommonRequestMiddleware, registerHttpResponseDiagnostics, registerServerStatusRoutes } from './core-routes.js';
+import { createDeploymentPathRuntime } from './deployment-path.js';
 import { createServerDiagnosticJournal } from '../diagnostics/server-journal.js';
 
 describe('core-routes', () => {
@@ -807,6 +808,27 @@ describe('client auth routes', () => {
       testHooks: { clients, requireAuth, requireSessionAuth, resolveAuthContext },
     };
   };
+
+  it('carries the deployment path in browser pairing candidates and redeemed server URLs', async () => {
+    const app = express();
+    app.use(createDeploymentPathRuntime('/openchamber').middleware);
+    const dependencies = {
+      ...createDependencies(),
+      clientPairingRuntime: {
+        createPairingSession: async () => ({ pairingId: 'test-pairing' }),
+        redeemPairingSession: async () => ({ pairing: {}, client: { id: 'test-client' }, token: 'test-token' }),
+      },
+    };
+    registerAuthAndAccessRoutes(app, dependencies);
+    const created = await request(app).post('/openchamber/api/client-auth/pairing/sessions')
+      .set('Host', 'app.example.com').set('X-Forwarded-Proto', 'https').send({ includeRelay: false });
+    expect(created.status).toBe(201);
+    expect(created.body.server.candidates).toEqual([{ type: 'tunnel', url: 'https://app.example.com/openchamber', priority: 10 }]);
+    const redeemed = await request(app).post('/openchamber/api/client-auth/pairing/redeem')
+      .set('Host', 'app.example.com').set('X-Forwarded-Proto', 'https').send({ pairingId: 'test-pairing', secret: 'test-secret' });
+    expect(redeemed.status).toBe(200);
+    expect(redeemed.body.server.url).toBe('https://app.example.com/openchamber');
+  });
 
   it('creates, lists, and revokes remote client tokens', async () => {
     const app = express();

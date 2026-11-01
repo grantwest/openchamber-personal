@@ -61,6 +61,24 @@ afterAll(() => {
 });
 
 describe('readRuntimeBootstrapConfig', () => {
+  test('uses the hosted deployment path when no runtime is injected', () => {
+    const current = makeWindow();
+    current.location = { origin: 'https://lab.example', search: '' };
+    current.__OPENCHAMBER_BASE_PATH__ = '/openchamber';
+    installWindow(current);
+
+    expect(readRuntimeBootstrapConfig().apiBaseUrl).toBe('https://lab.example/openchamber');
+  });
+
+  test('keeps an explicit native or remote runtime ahead of the deployment path', () => {
+    const current = makeWindow();
+    current.__OPENCHAMBER_BASE_PATH__ = '/openchamber';
+    current.__OPENCHAMBER_API_BASE_URL__ = 'https://remote.example/app';
+    installWindow(current);
+
+    expect(readRuntimeBootstrapConfig().apiBaseUrl).toBe('https://remote.example/app');
+  });
+
   test('reads the runtime injected into the current window', () => {
     const current = makeWindow();
     current.__OPENCHAMBER_API_BASE_URL__ = ' https://remote.example.com ';

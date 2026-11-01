@@ -19,6 +19,8 @@ In enterprise mode (`../enterprise-mode.js`) no tunnel starts at all: Cloudflare
 - `packages/web/server/lib/tunnels/providers/ngrok.js`: Ngrok quick tunnel provider implementation.
 - `packages/web/server/lib/tunnels/providers/tailscale.js`: Tailscale Serve (tailnet only) and Funnel (public) provider; the process itself lives in `../tailscale-tunnel.js`.
 
+Public status URLs and one-time connect URLs include `OPENCHAMBER_BASE_PATH` when configured. The tunnel auth controller keeps the original tunnel origin for its host checks. The server's deployment boundary scopes the exchanged session cookie and redirect to the public path.
+
 ## HTTPS port
 A mode that takes an HTTPS port lists the allowed ones in its capability descriptor (`httpsPorts`). Validation, the Settings select and the CLI all read that list, so it exists once. The saved `tunnelHttpsPort` setting applies only to such modes; an explicit `httpsPort` for any other mode is refused. A start whose port differs from the running tunnel's replaces it.
 

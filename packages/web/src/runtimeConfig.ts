@@ -7,6 +7,7 @@ import { getInjectedBootOutcome } from '@openchamber/ui/lib/desktopBoot';
 import { configureRuntimeUrlResolver } from '@openchamber/ui/lib/runtime-url';
 import { opencodeClient } from '@openchamber/ui/lib/opencode/client';
 import { createWebAPIs } from './api';
+import { getDeploymentApiBaseUrl } from '@openchamber/ui/lib/deployment-path';
 
 // The switcher's statuses are warmed after boot settles, not during it.
 const HOST_STATUS_WARMUP_DELAY_MS = 3_000;
@@ -48,7 +49,7 @@ export const readRuntimeBootstrapConfig = (): RuntimeBootstrapConfig => {
   const readString = (value: unknown): string => typeof value === 'string' ? value.trim() : '';
 
   return {
-    apiBaseUrl: readString(window.__OPENCHAMBER_API_BASE_URL__),
+    apiBaseUrl: readString(window.__OPENCHAMBER_API_BASE_URL__) || getDeploymentApiBaseUrl(),
     clientToken: readString(window.__OPENCHAMBER_CLIENT_TOKEN__),
     localOrigin: readString(window.__OPENCHAMBER_LOCAL_ORIGIN__),
     runtimeHeaders: window.__OPENCHAMBER_RUNTIME_HEADERS__,

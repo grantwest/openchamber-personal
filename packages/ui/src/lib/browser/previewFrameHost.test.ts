@@ -1,6 +1,11 @@
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
+import { configureRuntimeUrlResolver } from '../runtime-url';
 
 import { previewUrlToFilePath, visibleFrameArea } from './previewFrameHost';
+
+afterEach(() => {
+  configureRuntimeUrlResolver({});
+});
 
 describe('previewUrlToFilePath', () => {
   test('names the previewed file and drops the grant', () => {
@@ -11,6 +16,29 @@ describe('previewUrlToFilePath', () => {
   test('gives a Windows path back without the leading slash', () => {
     expect(previewUrlToFilePath('http://127.0.0.1:3001/api/fs/preview/grant-1/C:/site/index.html'))
       .toBe('C:/site/index.html');
+  });
+
+  test('drops grants under the active hosted or remote service prefix', () => {
+    configureRuntimeUrlResolver({ apiBaseUrl: 'https://host.example/tools/openchamber' });
+    expect(previewUrlToFilePath('https://host.example/tools/openchamber/api/fs/preview/grant-1/tmp/my%20site/index.html?x=1'))
+      .toBe('/tmp/my site/index.html');
+    expect(previewUrlToFilePath('https://host.example/tools/openchamber/api/fs/preview/grant-1/C:/site/index.html'))
+      .toBe('C:/site/index.html');
+  });
+
+  test('keeps URLs outside the configured preview mount unchanged', () => {
+    configureRuntimeUrlResolver({ apiBaseUrl: 'https://host.example/openchamber' });
+    const sibling = 'https://host.example/other/api/fs/preview/grant-1/tmp/index.html';
+    const external = 'https://other.example/openchamber/api/fs/preview/grant-1/tmp/index.html';
+    expect(previewUrlToFilePath(sibling)).toBe(sibling);
+    expect(previewUrlToFilePath(external)).toBe(external);
+  });
+
+  test('reads a new runtime prefix after an endpoint switch', () => {
+    configureRuntimeUrlResolver({ apiBaseUrl: 'https://host.example/first' });
+    configureRuntimeUrlResolver({ apiBaseUrl: 'https://host.example/second/' });
+    expect(previewUrlToFilePath('https://host.example/second/api/fs/preview/grant-1/tmp/index.html'))
+      .toBe('/tmp/index.html');
   });
 
   test('leaves any other address as it is', () => {

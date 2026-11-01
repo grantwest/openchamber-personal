@@ -9,6 +9,7 @@
  * `AnnotationHost` so `runAnnotationSession` drives the frame unchanged.
  */
 import { z } from 'zod';
+import { getRuntimeUrlResolver } from '../runtime-url';
 
 import type { AnnotationHost, PageCapture } from './annotationSession';
 import type { BrowserRect } from './contract';
@@ -139,7 +140,10 @@ export const visibleFrameArea = (frame: Edges, clips: ReadonlyArray<Edges>): { w
  */
 export const previewUrlToFilePath = (pageUrl: string): string => {
   try {
-    const match = /^\/api\/fs\/preview\/[^/]+(\/.+)$/.exec(new URL(pageUrl).pathname);
+    const url = new URL(pageUrl);
+    const mount = new URL(getRuntimeUrlResolver().api('/api/fs/preview/'), url);
+    if (url.origin !== mount.origin || !url.pathname.startsWith(mount.pathname)) return pageUrl;
+    const match = /^[^/]+(\/.+)$/.exec(url.pathname.slice(mount.pathname.length));
     if (!match) return pageUrl;
     const filePath = match[1].split('/').map((segment) => decodeURIComponent(segment)).join('/');
     // A Windows path rides in the URL as `/C:/…`.

@@ -76,7 +76,9 @@ on the source-control side (`lib/source-control/`).
   filters, `projectMapping` the container picker and start-in project,
   `multipleAccounts` the account switch, `sessionComments` the session status
   post. A session started before the tracker list is held waits for it
-  (bounded, dropped on a runtime switch) before that gate is read.
+  (bounded, dropped on a runtime switch) before that gate is read. Hosted
+  session-comment links preserve the deployment prefix in `sessionOrigin`;
+  desktop loopback selection remains unchanged.
 - Where a tracker is offered depends on sign-in (`sources.ts`):
   `useTrackerSources()` is the served trackers with a connected account, and
   it alone feeds the board's tabs, the composer's attach rows and New

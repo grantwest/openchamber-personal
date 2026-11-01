@@ -1,4 +1,5 @@
 import { registerPwaManifestRoute } from './pwa-manifest-routes.js';
+import { injectDeploymentBaseHtml } from './deployment-path.js';
 
 export const createStaticRoutesRuntime = (dependencies) => {
   const {
@@ -29,6 +30,21 @@ export const createStaticRoutesRuntime = (dependencies) => {
 
     if (fs.existsSync(distPath)) {
       console.log(`Serving static files from ${distPath}`);
+      const sendEntryHtml = async (req, res, next, entry = 'index.html') => {
+        try {
+          const html = await fs.promises.readFile(path.join(distPath, entry), 'utf8');
+          res.setHeader('Cache-Control', 'no-cache');
+          res.type('html').send(injectDeploymentBaseHtml(html, req.openchamberBasePath));
+        } catch (error) {
+          if (error.code === 'ENOENT') return next();
+          next(error);
+        }
+      };
+      // Only app entry documents receive deployment metadata. Guest and
+      // preview documents retain their own origin and asset rules.
+      app.get(['/', '/index.html', '/mobile.html'], (req, res, next) => {
+        return sendEntryHtml(req, res, next, req.path === '/mobile.html' ? 'mobile.html' : 'index.html');
+      });
       const hashedAssetsPrefix = path.join(distPath, 'assets') + path.sep;
       app.use(express.static(distPath, {
         setHeaders(res, filePath) {
@@ -57,8 +73,8 @@ export const createStaticRoutesRuntime = (dependencies) => {
         isRequestAuthorized,
       });
 
-      app.get(/^(?!\/api|\/linear|.*\.(js|css|svg|png|jpg|jpeg|gif|ico|woff|woff2|ttf|eot|map)).*$/, (_req, res) => {
-        res.sendFile(path.join(distPath, 'index.html'));
+      app.get(/^(?!\/api|\/linear|.*\.(js|css|svg|png|jpg|jpeg|gif|ico|woff|woff2|ttf|eot|map)).*$/, (req, res, next) => {
+        return sendEntryHtml(req, res, next);
       });
       return;
     }

@@ -41,6 +41,9 @@ const themeJsonHmrPlugin = () => ({
 });
 
 export default defineConfig({
+  // The server supplies the deployment base in HTML. Keep one build portable
+  // across root, prefixed hosting, and native shells.
+  base: './',
   root: path.resolve(__dirname, '.'),
   plugins: [
     // The React Compiler is most of a cold dev start; its output is kept on

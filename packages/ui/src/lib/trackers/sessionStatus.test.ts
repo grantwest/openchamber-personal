@@ -25,6 +25,17 @@ describe('resolveTrackerSessionOrigin', () => {
     expect(resolveTrackerSessionOrigin()).toBe('https://app.example.com');
   });
 
+  test('preserves the hosted path for tracker session links', () => {
+    Object.defineProperty(globalThis, 'window', {
+      configurable: true,
+      value: {
+        location: { origin: 'https://app.example.com' },
+        __OPENCHAMBER_BASE_PATH__: '/openchamber',
+      },
+    });
+    expect(resolveTrackerSessionOrigin()).toBe('https://app.example.com/openchamber');
+  });
+
   test('uses the desktop loopback origin instead of the packaged UI scheme', () => {
     Object.defineProperty(globalThis, 'window', {
       configurable: true,

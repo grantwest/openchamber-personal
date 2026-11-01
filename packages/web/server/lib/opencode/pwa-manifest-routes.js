@@ -1,3 +1,5 @@
+import { withDeploymentBasePath } from './deployment-path.js';
+
 const DEFAULT_PWA_APP_NAME = 'OpenChamber';
 const mapPwaOrientationToManifest = (value) => {
   if (value === 'portrait') {
@@ -257,6 +259,17 @@ export const registerPwaManifestRoute = (app, dependencies) => {
       categories: ['developer', 'tools', 'productivity'],
       lang: 'en',
     };
+
+    const deploymentUrl = (value) => withDeploymentBasePath(req.openchamberBasePath || '', value);
+    manifest.id = deploymentUrl(manifest.id);
+    manifest.start_url = deploymentUrl(manifest.start_url);
+    manifest.scope = deploymentUrl(manifest.scope);
+    manifest.icons = manifest.icons.map((icon) => ({ ...icon, src: deploymentUrl(icon.src) }));
+    manifest.shortcuts = manifest.shortcuts.map((shortcut) => ({
+      ...shortcut,
+      url: deploymentUrl(shortcut.url),
+      icons: shortcut.icons.map((icon) => ({ ...icon, src: deploymentUrl(icon.src) })),
+    }));
 
     res.setHeader('Cache-Control', 'no-store, must-revalidate');
     res.type('application/manifest+json');

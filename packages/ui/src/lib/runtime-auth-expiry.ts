@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { getRuntimeUrlResolver } from './runtime-url';
 
 // Proactive detection of an expired OpenChamber client session (cookie or
 // bearer). There is no polling: every HTTP response already funnels through
@@ -64,30 +65,38 @@ let probeInFlight = false;
 
 // Paths where a 401 is part of a normal flow (wrong password on login, a
 // pairing redeem, the confirm probe itself) rather than evidence of expiry.
-const isExcludedAuthPath = (url: string): boolean => (
-  url.includes('/auth/session') || url.includes('/api/client-auth/')
+const isExcludedAuthPath = (path: string): boolean => (
+  path === '/auth/session' || path.startsWith('/api/client-auth/')
 );
 
-const isClassifiablePath = (url: string): boolean => {
-  const path = url.startsWith('/') ? url : (() => {
-    try {
-      return new URL(url).pathname;
-    } catch {
-      return '';
-    }
-  })();
-  if (!path.startsWith('/api/') && !path.startsWith('/auth/')) return false;
-  return !isExcludedAuthPath(path);
+const isClassifiablePath = (value: string): boolean => {
+  try {
+    const href = globalThis.window?.location.href ?? 'http://openchamber.local/';
+    const api = new URL(getRuntimeUrlResolver().api('/api'), href);
+    const url = new URL(value, href);
+    if (url.protocol !== api.protocol || url.host !== api.host) return false;
+    const prefix = api.pathname.replace(/\/api$/, '');
+    if (!url.pathname.startsWith(`${prefix}/`)) return false;
+    const path = url.pathname.slice(prefix.length);
+    return (path.startsWith('/api/') || path.startsWith('/auth/')) && !isExcludedAuthPath(path);
+  } catch {
+    return false;
+  }
 };
 
 const confirmSessionExpired = async (): Promise<void> => {
   if (probeInFlight) return;
   probeInFlight = true;
   try {
+    const urls = getRuntimeUrlResolver();
+    const apiRoot = urls.api('/api');
+    const ownsProbe = () => getRuntimeUrlResolver() === urls && urls.api('/api') === apiRoot;
     // Deferred import: runtime-fetch classifies through this module, and the
     // probe deliberately re-enters it (its /auth/session path is excluded).
     const { runtimeFetch } = await import('./runtime-fetch');
+    if (!ownsProbe()) return;
     const response = await runtimeFetch('/auth/session', { credentials: 'include' });
+    if (!ownsProbe()) return;
     if (response.status === 401) {
       useAuthSessionStore.getState().markExpired();
       return;

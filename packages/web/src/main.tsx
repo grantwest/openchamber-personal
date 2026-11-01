@@ -1,5 +1,5 @@
 import { createConfiguredWebAPIs, getDesktopRelayRestoreReady } from './runtimeConfig';
-import { registerSW } from 'virtual:pwa-register';
+import { deploymentUrl } from '@openchamber/ui/lib/deployment-path';
 
 import type { RuntimeAPIs } from '@openchamber/ui/lib/api/types';
 import { resolveHostedSurface, watchHostedSurfaceViewport, type HostedSurface } from '@openchamber/ui/lib/runtimeSurface';
@@ -62,22 +62,29 @@ const runWhenDocumentCanRegisterServiceWorker = (task: () => void): void => {
 
 const registerPwaServiceWorker = (): void => {
   runWhenDocumentCanRegisterServiceWorker(() => {
-    try {
-      registerSW({
-        onRegisterError(error: unknown) {
-          console.warn('[PWA] service worker registration skipped:', error);
-        },
+    // The virtual PWA registration embeds a build-time URL and scope.
+    // Keep its auto-update behavior with the deployment selected at runtime.
+    void import('workbox-window').then(({ Workbox }) => {
+      const worker = new Workbox(deploymentUrl('/sw.js'), { scope: deploymentUrl('/') });
+      worker.addEventListener('activated', (event) => {
+        if (event.isUpdate || event.isExternal) window.location.reload();
       });
-    } catch (error) {
+      return worker.register();
+    }).catch((error: unknown) => {
       console.warn('[PWA] service worker registration skipped:', error);
-    }
+    });
   });
 };
 
 const unregisterDevelopmentServiceWorkers = (): void => {
   runWhenDocumentCanRegisterServiceWorker(() => {
     void navigator.serviceWorker.getRegistrations()
-      .then((registrations) => Promise.all(registrations.map((registration) => registration.unregister())))
+      .then((registrations) => {
+        const scope = new URL(deploymentUrl('/'), window.location.origin).href;
+        return Promise.all(registrations
+          .filter((registration) => registration.scope === scope)
+          .map((registration) => registration.unregister()));
+      })
       .catch(() => {});
   });
 };

@@ -10,8 +10,9 @@ import { createNotificationTemplateRuntime } from './template-runtime.js';
  * agent and model from the start, a user abort announces nothing, and an
  * active goal (which lives in OpenChamber's own metadata) silences the push.
  */
-const makeRuntime = ({ metadata = {}, settings = {}, isInAutoReview } = {}) => {
+const makeRuntime = ({ metadata = {}, settings = {}, isInAutoReview, getDeploymentBasePath } = {}) => {
   const emitDesktopNotification = vi.fn(() => true);
+  const sendPushToAllUiSessions = vi.fn(async () => undefined);
   const runtime = createNotificationTriggerRuntime({
     readSettingsFromDisk: async () => ({ nativeNotificationsEnabled: true, notificationMode: 'always', notifyOnCompletion: true, ...settings }),
     prepareNotificationLastMessage: async ({ message }) => message,
@@ -22,15 +23,16 @@ const makeRuntime = ({ metadata = {}, settings = {}, isInAutoReview } = {}) => {
     shouldApplyResolvedTemplateMessage: () => false,
     emitDesktopNotification,
     broadcastUiNotification: vi.fn(),
-    sendPushToAllUiSessions: vi.fn(async () => undefined),
+    sendPushToAllUiSessions,
     sendApnsToAllUiSessions: vi.fn(async () => undefined),
     isAnyInteractiveClientVisible: () => true,
     buildOpenCodeUrl: (path) => `http://opencode.test${path}`,
     getOpenCodeAuthHeaders: () => ({}),
     readSessionMetadata: async () => metadata,
     isInAutoReview,
+    getDeploymentBasePath,
   });
-  return { runtime, emitDesktopNotification };
+  return { runtime, emitDesktopNotification, sendPushToAllUiSessions };
 };
 
 const stepStarted = (sessionID, id) => ({
@@ -64,6 +66,13 @@ describe('ready notification on v2 step events', () => {
       title: 'Build is ready',
       body: 'Claude Sonnet 5 completed the task',
     });
+  });
+
+  it('keeps notification deep links under the deployment path', async () => {
+    const { runtime, sendPushToAllUiSessions } = makeRuntime({ getDeploymentBasePath: () => '/openchamber' });
+    await runtime.maybeSendPushForTrigger(stepStarted('ses_1', 'msg_1'));
+    await runtime.maybeSendPushForTrigger(turnEnded('ses_1'));
+    expect(sendPushToAllUiSessions.mock.calls[0][0].data.url).toBe('/openchamber/?session=ses_1');
   });
 
   it('announces in the interface language when the templates are left empty', async () => {

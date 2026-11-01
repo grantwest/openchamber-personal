@@ -540,7 +540,7 @@ export const registerAuthAndAccessRoutes = (app, dependencies) => {
     const protocol = forwardedProto || (req.socket?.encrypted ? 'https' : 'http');
     const host = typeof req.headers?.host === 'string' ? req.headers.host.trim() : '';
     if (!host) return null;
-    return `${protocol}://${host}`;
+    return `${protocol}://${host}${req.openchamberBasePath || ''}`;
   };
 
   const requestIp = (req) => {

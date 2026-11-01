@@ -17,8 +17,8 @@ import { installAuthSessionFocusWatch, useAuthSessionStore } from '@/lib/runtime
 import { AuthExpiredBanner } from './AuthExpiredBanner';
 import { getRuntimeExtraHeadersSync } from '@/lib/runtime-auth';
 import { getRuntimeApiBaseUrl, getRuntimeKey, subscribeRuntimeEndpointChanged, switchRuntimeEndpoint } from '@/lib/runtime-switch';
-import { desktopHostsGet, desktopHostsSet, getDesktopHostApiUrl, normalizeHostUrl } from '@/lib/desktopHosts';
-import { runtimeIdentityMatches, type GateState, type RuntimeIdentity } from './sessionAuthGateState';
+import { desktopHostsGet, desktopHostsSet, getDesktopHostApiUrl } from '@/lib/desktopHosts';
+import { runtimeEndpointsMatch, runtimeIdentityMatches, type GateState, type RuntimeIdentity } from './sessionAuthGateState';
 import {
   authenticateWithPasskey,
   cancelPasskeyCeremony,
@@ -52,24 +52,8 @@ const readLocalOrigin = (): string => {
   return typeof injected === 'string' ? injected.trim() : '';
 };
 
-const sameOrigin = (left: string, right: string): boolean => {
-  const normalizedLeft = normalizeHostUrl(left);
-  const normalizedRight = normalizeHostUrl(right);
-  if (!normalizedLeft || !normalizedRight) return false;
-  try {
-    return new URL(normalizedLeft).origin === new URL(normalizedRight).origin;
-  } catch {
-    return false;
-  }
-};
-
 const shouldIssueDesktopClientToken = (): boolean => {
   return isDesktopShell();
-};
-
-const isLoopbackHostname = (hostname: string): boolean => {
-  const clean = hostname.replace(/^\[|\]$/g, '');
-  return clean === 'localhost' || clean === '127.0.0.1' || clean === '::1';
 };
 
 const isLocalDesktopRuntime = (): boolean => {
@@ -82,15 +66,8 @@ const isLocalDesktopRuntime = (): boolean => {
   // clientKind), and the server's client-create gate then 403'd them.
   const apiBaseUrl = getRuntimeApiBaseUrl();
   const effectiveTarget = apiBaseUrl || (typeof window !== 'undefined' ? window.location.origin : '');
-  if (sameOrigin(localOrigin, effectiveTarget)) return true;
-  // Loopback aliases (localhost vs 127.0.0.1) still address this machine's
-  // own server.
-  try {
-    const normalized = normalizeHostUrl(effectiveTarget);
-    return Boolean(normalized && isLoopbackHostname(new URL(normalized).hostname));
-  } catch {
-    return false;
-  }
+  // Loopback aliases still name the embedded server only at its port and path.
+  return runtimeEndpointsMatch(localOrigin, effectiveTarget, true);
 };
 
 const desktopClientAuthMetadata = (): { clientKind?: string; dedupeKey?: string } => {
@@ -209,7 +186,7 @@ const persistDesktopClientToken = async (runtime: RuntimeIdentity, clientToken: 
   if (!isDesktopShell() || !clientToken || !isRuntimeIdentityActive(runtime)) return false;
   const cfg = await desktopHostsGet().catch(() => null);
   if (!cfg || !isRuntimeIdentityActive(runtime)) return false;
-  if (cfg.localOrigin && sameOrigin(cfg.localOrigin, runtime.apiBaseUrl)) {
+  if (cfg.localOrigin && runtimeEndpointsMatch(cfg.localOrigin, runtime.apiBaseUrl)) {
     await desktopHostsSet({
       hosts: cfg.hosts,
       defaultHostId: cfg.defaultHostId,
@@ -220,7 +197,7 @@ const persistDesktopClientToken = async (runtime: RuntimeIdentity, clientToken: 
   }
   let changed = false;
   const hosts = cfg.hosts.map((host) => {
-    if (!sameOrigin(getDesktopHostApiUrl(host), runtime.apiBaseUrl)) {
+    if (!runtimeEndpointsMatch(getDesktopHostApiUrl(host), runtime.apiBaseUrl)) {
       return host;
     }
     if (host.clientToken === clientToken) {

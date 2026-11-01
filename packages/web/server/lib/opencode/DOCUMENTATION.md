@@ -901,6 +901,26 @@ headers }` or v1 `{ npm, options }`. The stored entry is always a
   - `startListeningAndMaybeTunnel(options)`
   - `attachProcessHandlers(options)`
 
+## Deployment paths
+
+`OPENCHAMBER_BASE_PATH` selects the public path the reverse proxy preserves, for example `/openchamber`. Empty or `/` keeps root hosting. A trailing slash is removed. Segments must contain plain URL-safe characters; empty and dot segments, escapes, queries and fragments are refused. The `/api`, `/auth` and `/health` roots are reserved for canonical client paths.
+
+`deployment-path.js` removes the configured prefix before HTTP routes, compression and authentication. It also sets canonical `originalUrl`, since URL-token allowlists and the OpenCode proxy read it. The startup pipeline installs the upgrade boundary after all endpoint registrations, ahead of the spaces handler and every other upgrade handler. Future prepended handlers must preserve this ordering.
+
+Canonical root `/api/*`, `/auth/*` and `/health` remain reachable for existing native clients, local callbacks and relay dispatch. These aliases retain every authentication, origin, trust and enterprise gate. The deployment prefix is routing configuration, not an access-control boundary. Other paths outside the prefix return 404.
+
+Prefixed responses scope cookie paths and root-relative redirects to the deployment path. External redirect destinations stay unchanged. Entry HTML and SPA fallback HTML receive `<base href="/openchamber/">` and `window.__OPENCHAMBER_BASE_PATH__="/openchamber"` before other head content. Residual root-relative `href` and `src` attributes receive the prefix. Root entry and SPA fallback HTML receive `<base href="/">` and `window.__OPENCHAMBER_BASE_PATH__=""`. This preserves deep refreshes with document-relative build URLs: assets on `/deep/link` still load from `/assets/`. Root asset URLs, cookies and API routing keep their existing behavior. Frontend assets must use document-relative build URLs. Guest and preview HTML retain their own document rules.
+
+Manifest URLs, browser pairing URLs, tunnel connect links and notification session links carry the deployment path. Direct loopback and LAN candidates can retain canonical root URLs. OpenCode upstream URLs and relay wire paths stay canonical.
+
+### Why canonicalize before route dispatch
+
+A single boundary lets existing route, auth and proxy code keep canonical paths. Mounting only Express routes would leave raw WebSocket upgrades and `originalUrl` consumers with different paths.
+
+### Why inject only application entry HTML
+
+The application needs a deployment base before scripts and styles load, including on deep refreshes. Rewriting arbitrary HTML responses would change guest sandbox documents and third-party preview pages.
+
 ## Public exports (static-routes-runtime.js)
 - `createStaticRoutesRuntime(dependencies)`: creates runtime for static dist resolution and static route registration.
 - Returned API:

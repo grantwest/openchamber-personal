@@ -3,6 +3,7 @@ import path from 'path';
 import { getLinearAuth, getLinearAuthFilePath, getLinearSessionCommentsEnabled } from './auth.js';
 import { createLinearIssueComment } from './issues.js';
 import { isPlainObject, readTrimmedString } from './parse.js';
+import { normalizeBasePath } from '../opencode/deployment-path.js';
 
 const LINEAR_SESSION_STATUS_KINDS = ['started', 'completed', 'failure'];
 const MAX_SESSION_STATUS_RECORDS = 500;
@@ -95,8 +96,7 @@ export function readSessionOrigin(value) {
     if (url.protocol !== 'http:' && url.protocol !== 'https:') return '';
     if (url.username || url.password) return '';
     if (url.search || url.hash) return '';
-    if (url.pathname && url.pathname !== '/') return '';
-    return url.origin;
+    return `${url.origin}${normalizeBasePath(url.pathname)}`;
   } catch {
     return '';
   }

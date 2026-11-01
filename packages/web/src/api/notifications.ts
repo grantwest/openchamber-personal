@@ -1,4 +1,5 @@
 import type { NotificationPayload, NotificationsAPI } from '@openchamber/ui/lib/api/types';
+import { deploymentUrl } from '@openchamber/ui/lib/deployment-path';
 
 const SW_READY_TIMEOUT_MS = 1500;
 const NOTIFICATION_DEDUPE_TTL_MS = 5000;
@@ -15,7 +16,7 @@ const buildSessionTargetUrl = (sessionId?: string): string | null => {
   if (typeof sessionId !== 'string') return null;
   const trimmed = sessionId.trim();
   if (!trimmed) return null;
-  return `/?session=${encodeURIComponent(trimmed)}`;
+  return deploymentUrl(`/?session=${encodeURIComponent(trimmed)}`);
 };
 
 type NotificationTarget = {

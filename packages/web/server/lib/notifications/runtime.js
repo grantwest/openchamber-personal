@@ -1,4 +1,5 @@
 import { unwrapOpenCodeResponse } from '../opencode/response-envelope.js';
+import { withDeploymentBasePath } from '../opencode/deployment-path.js';
 import { createSessionActivityProbe } from '../opencode/session-activity.js';
 import { isEnterpriseMode } from '../enterprise-mode.js';
 import { truncateNotificationText } from './message.js';
@@ -28,6 +29,7 @@ export const createNotificationTriggerRuntime = (deps) => {
     isAnyInteractiveClientVisible,
     buildOpenCodeUrl,
     getOpenCodeAuthHeaders,
+    getDeploymentBasePath = () => '',
     // OpenChamber's own session metadata (the goal lives there, not on the
     // OpenCode record). Optional: without it no goal can suppress a push.
     readSessionMetadata = null,
@@ -212,10 +214,8 @@ export const createNotificationTriggerRuntime = (deps) => {
   };
 
   const buildSessionDeepLinkUrl = (sessionId) => {
-    if (!sessionId || typeof sessionId !== 'string') {
-      return '/';
-    }
-    return `/?session=${encodeURIComponent(sessionId)}`;
+    const url = sessionId && typeof sessionId === 'string' ? `/?session=${encodeURIComponent(sessionId)}` : '/';
+    return withDeploymentBasePath(getDeploymentBasePath(), url);
   };
 
   const getSessionParentCacheKey = (sessionId, directory, spaceId) => `${spaceId || ''}\0${directory || ''}\0${sessionId}`;

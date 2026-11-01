@@ -14,6 +14,7 @@ export const createStartupPipelineRuntime = (dependencies) => {
     const {
       app,
       server,
+      deploymentPathRuntime = null,
       express,
       fs,
       path,
@@ -129,6 +130,7 @@ export const createStartupPipelineRuntime = (dependencies) => {
       TUNNEL_MODE_MANAGED_REMOTE,
     });
 
+    deploymentPathRuntime?.installUpgradeBoundary(server);
     const bindHost = serverStartupRuntime.resolveBindHost(host);
     const startupResult = await serverStartupRuntime.startListeningAndMaybeTunnel({
       port,

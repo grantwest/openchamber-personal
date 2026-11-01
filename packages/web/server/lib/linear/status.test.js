@@ -94,7 +94,12 @@ describe('Linear session status comments', () => {
     expect(readSessionOrigin('https://app.example.com')).toBe('https://app.example.com');
     expect(readSessionOrigin('http://127.0.0.1:3001/')).toBe('http://127.0.0.1:3001');
     expect(readSessionOrigin('javascript:alert(1)')).toBe('');
-    expect(readSessionOrigin('https://app.example.com/secret')).toBe('');
+    expect(readSessionOrigin('https://app.example.com/openchamber/')).toBe('https://app.example.com/openchamber');
+    for (const value of ['https://user:password@app.example.com/openchamber', 'https://app.example.com/openchamber?secret=1', 'https://app.example.com/openchamber#fragment', 'https://app.example.com/unsafe%2fpath', 'https://app.example.com/unsafe)path']) {
+      expect(readSessionOrigin(value)).toBe('');
+    }
+    expect(buildLinearSessionOpenUrl('ses/a b', 'https://app.example.com/tools/openchamber'))
+      .toBe('https://app.example.com/tools/openchamber/?session=ses%2Fa%20b');
     expect(readSessionOrigin('openchamber:')).toBe('');
     expect(buildLinearSessionOpenUrl('ses_1', 'https://app.example.com'))
       .toBe('https://app.example.com/?session=ses_1');
@@ -108,6 +113,8 @@ describe('Linear session status comments', () => {
 
     expect(isPublicSessionOrigin('http://localhost:3001')).toBe(false);
     expect(isPublicSessionOrigin('http://127.0.0.1:3001')).toBe(false);
+    expect(isPublicSessionOrigin('http://127.0.0.1:3001/openchamber')).toBe(false);
+    expect(isPublicSessionOrigin('https://chamber.example.com/openchamber')).toBe(true);
     expect(isPublicSessionOrigin('http://[::1]:3001')).toBe(false);
     expect(isPublicSessionOrigin('http://192.168.1.20:3001')).toBe(false);
     expect(isPublicSessionOrigin('http://10.0.0.5:3001')).toBe(false);
@@ -243,6 +250,21 @@ describe('Linear session status comments', () => {
       sessionId: 'ses_1',
     })).resolves.toEqual({ connected: true, posted: false, skipped: 'not-started' });
     expect(graphql).not.toHaveBeenCalled();
+  });
+
+  it('preserves the public deployment path across persisted started and completed comments', async () => {
+    const graphql = stubLinearGraphql();
+    vi.stubGlobal('fetch', graphql);
+    await postLinearSessionStatus({ kind: 'started', sessionId: 'ses_1', issueIdentifier: 'ENG-12', sessionOrigin: 'https://app.example.com/openchamber/' });
+    await postLinearSessionStatus({ kind: 'completed', sessionId: 'ses_1' });
+    const bodies = graphql.mock.calls
+      .map(([, options]) => JSON.parse(options.body))
+      .filter((body) => body.query.includes('mutation CommentCreate'))
+      .map((body) => body.variables.input.body);
+    expect(bodies).toEqual([
+      '[OpenChamber session started](https://app.example.com/openchamber/?session=ses_1)',
+      '[OpenChamber session completed](https://app.example.com/openchamber/?session=ses_1)',
+    ]);
   });
 
   it('posts completed once after started, reusing the stored open URL', async () => {

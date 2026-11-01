@@ -84,6 +84,53 @@ describe('runtime auth headers', () => {
     }
   });
 
+  test('preserves a remote path prefix when minting URL tokens', async () => {
+    const previousFetch = globalThis.fetch;
+    let seenUrl = '';
+    try {
+      clearRuntimeUrlAuthToken();
+      // SAFETY: The token-minting path only calls fetch and consumes this Response fixture.
+      globalThis.fetch = (async (input: RequestInfo | URL) => {
+        seenUrl = String(input);
+        return new Response(JSON.stringify({ token: 'scoped-token', expiresAt: Date.now() + 60_000 }), {
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }) as typeof fetch;
+      await refreshRuntimeUrlAuthToken('https://remote.example/openchamber/?stale=1#hash');
+      expect(seenUrl).toBe('https://remote.example/openchamber/auth/url-token');
+    } finally {
+      globalThis.fetch = previousFetch;
+      clearRuntimeUrlAuthToken();
+    }
+  });
+
+  test('uses the hosted deployment when minting URL tokens without a remote runtime', async () => {
+    const previousFetch = globalThis.fetch;
+    const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
+    let seenUrl = '';
+    try {
+      clearRuntimeUrlAuthToken();
+      Object.defineProperty(globalThis, 'window', {
+        configurable: true,
+        value: { location: { origin: 'https://lab.example' }, __OPENCHAMBER_BASE_PATH__: '/openchamber' },
+      });
+      // SAFETY: The token-minting path only calls fetch and consumes this Response fixture.
+      globalThis.fetch = (async (input: RequestInfo | URL) => {
+        seenUrl = String(input);
+        return new Response(JSON.stringify({ token: 'scoped-token', expiresAt: Date.now() + 60_000 }), {
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }) as typeof fetch;
+      await refreshRuntimeUrlAuthToken();
+      expect(seenUrl).toBe('https://lab.example/openchamber/auth/url-token');
+    } finally {
+      globalThis.fetch = previousFetch;
+      clearRuntimeUrlAuthToken();
+      if (previousWindow) Object.defineProperty(globalThis, 'window', previousWindow);
+      else Reflect.deleteProperty(globalThis, 'window');
+    }
+  });
+
   test('sends runtime extra headers when minting URL auth tokens', async () => {
     const previousFetch = globalThis.fetch;
     let seenUrl = '';
