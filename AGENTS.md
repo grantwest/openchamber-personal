@@ -6,6 +6,27 @@ OpenChamber provides shared web, desktop, VS Code, hosted-mobile, and native-mob
 
 This file contains only always-on repository rules and routing. Detailed workflows belong to project skills and module documentation.
 
+This checkout is Grant West's long-running personal fork. Work serves Grant's requirements. Changes stay in the personal fork; upstream contribution, public issue triage, and upstream PR workflows do not apply.
+
+## Personal fork and upstream updates
+
+Read [personalchanges.md](personalchanges.md) before changing code or resolving upstream merge conflicts. Keep it current when adding, changing, or removing personal customizations.
+
+- Personal changes live directly on `main`. A separate long-lived customization branch is not required.
+- The intended remotes are `origin` for `grantwest/openchamber-personal` and `upstream` for `openchamber/openchamber`. Verify the remotes before using them.
+- Update from the latest published stable tagged upstream release. Fetch upstream tags, verify the latest non-prerelease release, inspect its changes, and merge that exact tag. `upstream/main` can contain unreleased work.
+- Prepare release merges in a separate Git worktree based on the current head of personal `main`. Run the applicable checks and tests there. Integrate only after behavior is validated and questions are resolved.
+- Before integration, recheck that the primary worktree is clean and `main` is unchanged. Fast-forward it to the tested merge commit; otherwise stop or revalidate.
+- Preserve personal history with merge commits when needed. Never reset personal `main` to upstream, force-push, rewrite shared history, or discard personal or remote work to synchronize it.
+- Before merging, inspect the worktree and coordinate with other agents. Stage and commit only files belonging to the task. Ask before restarting a running server.
+- Publish only to the verified personal `origin` when requested, with a normal non-force push and without publishing tags. Verify the remote commit matches local `main`. Stop and report authentication failures, publication failures, or divergent history.
+- Keep upstream product and contribution documents unchanged for personal customizations, including `docs/`, `packages/docs/`, and `CONTRIBUTING.md`. Record personal requirements, behavior, validation, and maintenance notes in `personalchanges.md`. This overrides general instructions to update upstream documentation for personal changes. Keep owning module `DOCUMENTATION.md` contracts accurate. Upstream release merges can update upstream documentation.
+- During conflict resolution, read `personalchanges.md` and the relevant personal commit messages. Reconcile the requirements with upstream changes; ask Grant when they cannot be reconciled safely.
+
+### Commit messages preserve intent
+
+Use a conventional commit subject and a body that explains why the change exists. Record the motivation and use case, requirements and exclusions, consequential decisions and trade-offs, and validation performed or omitted. Keep this information in the message itself so a future merge can preserve the intended behavior without the original conversation.
+
 ## Instruction Order
 
 These steps are mandatory. Before editing, you **MUST**:
@@ -26,10 +47,12 @@ Do not start editing before every matching skill and required reference is read.
 Every fix and feature goes through these steps, in order. What counts as proof, and where to run each kind of change, is in `openchamber-change-discipline` (*Proof*, *Where to run it*).
 
 1. **Reproduce.** Make the failure happen the way a user hits it, in the runtime that runs the code; for a feature, see what that runtime does today where the feature goes. Unreproduced goes to the report with what you tried before any fix.
-2. **Fix the cause.** The smallest change that removes it. A correctness problem you trip over in code you touch is fixed in the same change; one elsewhere goes to the report or its own pull request.
+2. **Fix the cause.** The smallest change that removes it. A correctness problem you trip over in code you touch is fixed in the same change; one elsewhere goes to the report.
 3. **Prove it.** Run the same reproduction and watch it pass. Report what the proof covered and what it did not.
 4. **Second look.** The `review` agent on the diff (`.opencode/agent/review.md`), or a reviewer on another model where your tool has no such agent; one-line and text-only edits go without. Answer findings per `openchamber-change-discipline` (*Answering Review Findings*).
-5. **Hand off.** The working tree for the person you work with, or a pull request (*Pull Request Handoff*).
+5. **Hand off.** The working tree for Grant. Commit and publish only when requested.
+
+Product decisions belong to Grant. Ask before implementing an unresolved behavior choice, changed default, new control, or removal of deliberate behavior. An explicit request settles the choices it specifies. Bug fixes restore the behavior the code claims to provide.
 
 ## Runtime Boundaries
 
@@ -84,29 +107,3 @@ implementation skills unless a specialized subsystem has to be interpreted.
 
 - Use `package.json` scripts as the command source of truth. Which checks a change needs is in `openchamber-change-discipline`.
 - Before every commit of source changes, `bun run check:changed` passes (`scripts/check-changed.mjs` says what it runs). Fix the new findings; the pre-existing backlog stays out of scope unless the task is that cleanup. Never silence a rule, weaken severity, or launder types to make a check pass.
-
-## Pull Request Handoff
-
-Before creating or updating a pull request, read `CONTRIBUTING.md` (*Pull Requests*) and fill `.github/PULL_REQUEST_TEMPLATE.md` with evidence for the final HEAD.
-
-A **product decision** belongs to the maintainer and is settled before the code,
-never inside the diff. A product decision is anything where two reasonable people
-could disagree about whether it should exist or how it should behave: a new
-button, panel, setting or command; a changed default; a shortcut or gesture that
-now does something else; different wording, ordering or grouping in the UI;
-anything that turns existing behavior on or off for everyone. Removing or
-bypassing behavior the code marks as deliberate is one too, and there the first
-question is whether it is a defect at all. A crash, wrong data, behavior that
-contradicts what it plainly claims, or a performance fix that keeps behavior
-identical is a bug, not a product decision.
-
-Where that decision is settled depends on who is working:
-
-- **Working with the maintainer or a team member** (anyone with repository
-  access): raise the product question in the session and get an answer there.
-  The decision already happened off GitHub; no discussion thread and no link is
-  expected on the pull request.
-- **Working as an outside contributor**: open a feature request and build only after the maintainer marks it `accepted`, as `CONTRIBUTING.md` (*Before you start*) describes; the pull request links it with `Fixes #N` or `Part of #N`. A pull request without that link is closed automatically.
-
-When the call is unclear, ask before building. Deciding it silently is the one
-thing that is always wrong.

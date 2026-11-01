@@ -123,7 +123,7 @@ A document is a hypothesis about what an agent does with it, and a run is the on
 | Concern | Canonical skill |
 |---|---|
 | Product decisions | root `AGENTS.md` |
-| PR verdicts, pickup mode, review output | `pr-review` |
+| Local correctness review output | `.opencode/agent/review.md` |
 | Public text (closes, declines, thanks) | `communication-style` |
 | Change scope, abstraction discipline, and validation risk | `openchamber-change-discipline` |
 | State authority, reconciliation, optimistic state, and lifecycle correctness | `sync-state-invariants` |

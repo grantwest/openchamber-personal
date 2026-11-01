@@ -104,8 +104,6 @@ The Electron app menu and the right-click context menu are native, outside `@/li
 
 ## Adding a UI Language
 
-Russian is not added: a standing maintainer decision (`triage-prs`, template *russian-locale*).
-
 A new locale code lands in all of these in one change:
 
 - `packages/ui/src/lib/i18n/runtime.ts`: the `Locale` union, `LOCALES`, `LOCALE_LABEL_KEYS`, and `normalizeLocale` (include legacy tags the platforms still send, such as `iw` for Hebrew). A right-to-left language also joins `RTL_LOCALES`; the layout side is owned by `rtl-layout`.
